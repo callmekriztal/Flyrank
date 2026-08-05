@@ -16,3 +16,11 @@ Build a complete CRUD REST API using Express and an in-memory data store. Create
 
 ## Curl
 ![All API End Points](./.assets/week2.png)
+
+## FlyRank Week 3 Assignment
+
+Upgrade your in-memory CRUD API to use a SQLite database for persistent storage. Keep the same REST endpoints while replacing the in-memory task list with SQL queries. Ensure the database and table are created automatically, seed initial tasks only once, verify data survives server restarts, and publish the updated project with documentation and a database screenshot.
+
+## Curl
+![API Endpoints](./.assets/db_1.png)
+![API Endpoints and persistence check](./.assets/db_2.png)

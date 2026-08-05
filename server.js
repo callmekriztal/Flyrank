@@ -1,40 +1,61 @@
 const express = require("express");
+const Database = require("better-sqlite3");
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
-// In-memory tasks
-let tasks = [
-  { id: 1, title: "Learn Express", done: false },
-  { id: 2, title: "Build CRUD API", done: false },
-  { id: 3, title: "Practice SQLite", done: false }
-];
+const db = new Database("tasks.db");
 
-// Home route
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    done INTEGER NOT NULL
+  )
+`).run();
+
+const count = db.prepare("SELECT COUNT(*) AS count FROM tasks").get();
+
+if (count.count === 0) {
+  const insert = db.prepare(
+    "INSERT INTO tasks (title, done) VALUES (?, ?)"
+  );
+
+  insert.run("Learn Express", 0);
+  insert.run("Build CRUD API", 0);
+  insert.run("Practice SQLite", 0);
+}
+
 app.get("/", (req, res) => {
   res.json({ message: "Hello, World!" });
 });
 
-// About route
 app.get("/about", (req, res) => {
   res.json({
     name: "Christy Cyril",
-    course: "Week 1 assignment"
+    course: "Week 3 SQLite Assignment"
   });
 });
 
-// GET all tasks
 app.get("/tasks", (req, res) => {
-  res.json(tasks);
+  const tasks = db.prepare("SELECT * FROM tasks").all();
+
+  const formattedTasks = tasks.map(task => ({
+    ...task,
+    done: Boolean(task.done)
+  }));
+
+  res.json(formattedTasks);
 });
 
-// GET one task
 app.get("/tasks/:id", (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = Number(req.params.id);
 
-  const task = tasks.find(t => t.id === id);
+  const task = db
+    .prepare("SELECT * FROM tasks WHERE id = ?")
+    .get(id);
 
   if (!task) {
     return res.status(404).json({
@@ -42,10 +63,11 @@ app.get("/tasks/:id", (req, res) => {
     });
   }
 
+  task.done = Boolean(task.done);
+
   res.json(task);
 });
 
-// CREATE task
 app.post("/tasks", (req, res) => {
   const { title } = req.body;
 
@@ -55,29 +77,23 @@ app.post("/tasks", (req, res) => {
     });
   }
 
-  const newTask = {
-    id: tasks.length ? tasks[tasks.length - 1].id + 1 : 1,
-    title,
-    done: false
-  };
+  const result = db
+    .prepare("INSERT INTO tasks (title, done) VALUES (?, ?)")
+    .run(title, 0);
 
-  tasks.push(newTask);
+  const newTask = db
+    .prepare("SELECT * FROM tasks WHERE id = ?")
+    .get(result.lastInsertRowid);
+
+  newTask.done = Boolean(newTask.done);
 
   res.status(201).json(newTask);
 });
 
-// UPDATE task
+
 app.put("/tasks/:id", (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = Number(req.params.id);
   const { title, done } = req.body;
-
-  const task = tasks.find(t => t.id === id);
-
-  if (!task) {
-    return res.status(404).json({
-      error: "Task not found"
-    });
-  }
 
   if (!title || typeof done !== "boolean") {
     return res.status(400).json({
@@ -85,30 +101,45 @@ app.put("/tasks/:id", (req, res) => {
     });
   }
 
-  task.title = title;
-  task.done = done;
+  const existing = db
+    .prepare("SELECT * FROM tasks WHERE id = ?")
+    .get(id);
 
-  res.json(task);
-});
-
-// DELETE task
-app.delete("/tasks/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-
-  const index = tasks.findIndex(t => t.id === id);
-
-  if (index === -1) {
+  if (!existing) {
     return res.status(404).json({
       error: "Task not found"
     });
   }
 
-  tasks.splice(index, 1);
+  db.prepare(
+    "UPDATE tasks SET title = ?, done = ? WHERE id = ?"
+  ).run(title, done ? 1 : 0, id);
+
+  const updatedTask = db
+    .prepare("SELECT * FROM tasks WHERE id = ?")
+    .get(id);
+
+  updatedTask.done = Boolean(updatedTask.done);
+
+  res.json(updatedTask);
+});
+
+app.delete("/tasks/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  const result = db
+    .prepare("DELETE FROM tasks WHERE id = ?")
+    .run(id);
+
+  if (result.changes === 0) {
+    return res.status(404).json({
+      error: "Task not found"
+    });
+  }
 
   res.status(204).send();
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
