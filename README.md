@@ -84,4 +84,4 @@ docker exec -it taskdb psql -U postgres -d tasks
 SELECT * FROM tasks;
 ```
 
-> **Submission Note:** Include a screenshot of your terminal (or GUI tool like pgAdmin, DBeaver, or TablePlus) executing `\dt` and `SELECT * FROM tasks;` showing the seeded rows to verify database initialization.
+> **Submission Note:** Include a screenshot of your terminal (or GUI tool like pgAdmin, DBeaver, or TablePlus) executing `\dt` and `SELECT * FROM tasks;` showing the seeded rows to verify database initialization.# Flyrank_Assignments
