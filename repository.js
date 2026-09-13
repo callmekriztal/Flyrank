@@ -4,27 +4,39 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
 
-async function initializeDatabase() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS tasks (
-      id SERIAL PRIMARY KEY,
-      title TEXT NOT NULL,
-      done BOOLEAN NOT NULL DEFAULT FALSE
-    )
-  `);
+async function initializeDatabase(retries = 10, delay = 1000) {
+  while (retries > 0) {
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS tasks (
+          id SERIAL PRIMARY KEY,
+          title TEXT NOT NULL,
+          done BOOLEAN NOT NULL DEFAULT FALSE
+        )
+      `);
 
-  const result = await pool.query(
-    "SELECT COUNT(*) AS count FROM tasks"
-  );
+      const result = await pool.query(
+        "SELECT COUNT(*) AS count FROM tasks"
+      );
 
-  if (Number(result.rows[0].count) === 0) {
-    await pool.query(`
-      INSERT INTO tasks (title, done)
-      VALUES
-        ('Learn Express', false),
-        ('Build CRUD API', false),
-        ('Practice PostgreSQL', false)
-    `);
+      if (Number(result.rows[0].count) === 0) {
+        await pool.query(`
+          INSERT INTO tasks (title, done)
+          VALUES
+            ('Learn Express', false),
+            ('Build CRUD API', false),
+            ('Practice PostgreSQL', false)
+        `);
+      }
+      return;
+    } catch (error) {
+      retries -= 1;
+      if (retries === 0) throw error;
+      console.log(
+        `Database connection failed (${error.code || error.message}). Retrying in ${delay}ms...`
+      );
+      await new Promise((res) => setTimeout(res, delay));
+    }
   }
 }
 
